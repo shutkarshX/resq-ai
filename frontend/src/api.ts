@@ -134,10 +134,10 @@ export const resqApi = {
     return await response.json();
   },
 
-
   // Optional: reports endpoint if needed elsewhere
   reports: async () => {
     if (!API_URL) return [];
+
     try {
       const response = await fetch(`${API_URL}/api/reports`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -146,5 +146,36 @@ export const resqApi = {
       console.warn("Failed to fetch reports from API:", error);
       return [];
     }
+  },
+
+  createReport: async (report: {
+    emergency: string;
+    people: number;
+    medical_emergency: boolean;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
+    flood_severity: number;
+    infrastructure_damage: number;
+    weather_severity: number;
+  }) => {
+    if (!API_URL) {
+      throw new Error("Backend API URL is not configured");
+    }
+
+    const response = await fetch(`${API_URL}/api/reports`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(report),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
   },
 };

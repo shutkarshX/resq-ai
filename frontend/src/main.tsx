@@ -38,6 +38,7 @@ function App() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [apiState, setApiState] = useState<"connecting" | "online" | "demo">("connecting");
   const [refreshing, setRefreshing] = useState(false);
+  const [sosSubmitting, setSosSubmitting] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [responsePlan, setResponsePlan] = useState<any>(null);
   const [showToast, setShowToast] = useState(false);
@@ -62,8 +63,28 @@ function App() {
       coords: zones[index]?.coords || zones[0].coords,
     }));
   }, [dashboard]);
-  const filteredZones = useMemo(() => liveZones.filter(z => z.name.toLowerCase().includes(search.toLowerCase())), [liveZones, search]);
-  const loadDashboard = async () => {
+  const filteredZones = useMemo(() => liveZones.filter(z => z.name.toLowerCase().includes(search.toLowerCase())), [liveZones, search]);    const submitSOS = async () => {
+    setSosSubmitting(true);
+
+    try {
+    await resqApi.assign(
+      selectedZone.id,
+      "Citizen SOS broadcast — dispatch nearest available rescue team"
+    );
+
+    setShowSOS(false);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2600);
+
+    await loadDashboard();
+  } catch (error) {
+    console.error("SOS submission failed:", error);
+  } finally {
+    setSosSubmitting(false);
+  }
+};
+
+const loadDashboard = async () => {
     setRefreshing(true);
     try {
       const payload = await resqApi.dashboard();
@@ -302,7 +323,9 @@ function App() {
           <div className="bottom-strip"><div className="strip-item"><CloudRain size={18}/><span><b>Weather alert</b> Rainfall intensity <strong>68 mm/hr</strong></span><em>+12%</em></div><div className="strip-item"><Thermometer size={18}/><span><b>River gauge</b> Kolar River level <strong>3.8m / 4.5m</strong></span><em className="amber-text">Rising</em></div><div className="strip-item"><MessageSquare size={18}/><span><b>Citizen network</b> <strong>128 live SOS reports</strong></span><em className="green-text">Connected</em></div><div className="strip-item"><Clock3 size={18}/><span><b>Last model refresh</b> 13:42:08 IST</span><em className="green-text">Live</em></div></div>
         </section>
       </main>
-      {showSOS && <div className="modal-backdrop" onClick={() => setShowSOS(false)}><div className="sos-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowSOS(false)}><X size={18}/></button><div className="sos-icon"><PhoneCall size={23}/></div><div className="panel-kicker red">CITIZEN SOS BROADCAST</div><h2>Start an emergency broadcast?</h2><p>This will open a public SOS intake channel and notify all nearby response teams. Use only for an active emergency.</p><div className="sos-preview"><MapPinned size={17}/><span><b>Bhopal response area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={() => {setShowSOS(false); assign();}}>Broadcast SOS channel <Siren size={16}/></button><button className="cancel-btn" onClick={() => setShowSOS(false)}>Cancel</button></div></div>}
+      {showSOS && <div className="modal-backdrop" onClick={() => setShowSOS(false)}><div className="sos-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowSOS(false)}><X size={18}/></button><div className="sos-icon"><PhoneCall size={23}/></div><div className="panel-kicker red">CITIZEN SOS BROADCAST</div><h2>Start an emergency broadcast?</h2><p>This will open a public SOS intake channel and notify all nearby response teams. Use only for an active emergency.</p><div className="sos-preview"><MapPinned size={17}/><span><b>Bhopal response area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={submitSOS} disabled={sosSubmitting}>
+  {sosSubmitting ? "Sending SOS..." : "Broadcast SOS channel"} <Siren size={16}/>
+</button><button className="cancel-btn" onClick={() => setShowSOS(false)}>Cancel</button></div></div>}
 {responsePlan && (
   <div className="modal-backdrop" onClick={() => setResponsePlan(null)}>
     <div className="sos-modal response-plan-modal" onClick={e => e.stopPropagation()}>
