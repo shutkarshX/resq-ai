@@ -1,5 +1,16 @@
 # RESQ-AI
 
+## Windows Quick Start
+
+After cloning the repository:
+
+1. Open a terminal in the project folder.
+2. Run `setup.bat` once to install dependencies and create demo data.
+3. Run `run.bat` whenever you want to start RESQ-AI.
+4. Open http://localhost:5173 in your browser.
+
+`run.bat` starts both the FastAPI backend and React frontend automatically.
+
 Disaster Response Intelligence Platform
 
 RESQ-AI is an AI-assisted disaster response command-center prototype that helps emergency teams understand incidents, prioritize high-risk zones, coordinate rescue teams, and track response operations from one dashboard.
