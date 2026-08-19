@@ -45,10 +45,12 @@ function App() {
   const [showSOS, setShowSOS] = useState(false);
   const [responsePlan, setResponsePlan] = useState<any>(null);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Response team has been notified and assigned.");
   const [search, setSearch] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
   const [operations, setOperations] = useState<any[]>([]);
+  const [volunteers, setVolunteers] = useState<any[]>([]);
   const nav = [
     { label: "Command Center", icon: Target }, { label: "Live Map", icon: MapPinned },
     { label: "Reports & AI", icon: FileText }, { label: "Rescue Operations", icon: Route },
@@ -70,7 +72,7 @@ function App() {
   setSosSubmitting(true);
 
   try {
-    await resqApi.createReport({
+    const sosResult = await resqApi.createReport({
       emergency: sosEmergency,
       people: sosPeople,
       medical_emergency: sosMedical,
@@ -81,9 +83,17 @@ function App() {
       infrastructure_damage: 0,
       weather_severity: 7,
     });
-
+const dispatchResult = await resqApi.assign(
+  selectedZone.id,
+  `Respond to ${sosEmergency} SOS — ${sosPeople} people${sosMedical ? " · medical emergency" : ""}`
+);
     setShowSOS(false);
-    setShowToast(true);
+setToastMessage(
+  dispatchResult?.status === "DEPLOYED"
+    ? `${dispatchResult.team_id} deployed to ${selectedZone.name}`
+    : "Response action queued — no rescue team currently available."
+);
+setShowToast(true);
     setTimeout(() => setShowToast(false), 2600);
 
     const updatedReports = await resqApi.reports();
@@ -112,11 +122,17 @@ const loadDashboard = async () => {
     loadDashboard();
     resqApi.reports().then(setReports).catch(() => setReports([]));
     resqApi.actions().then(setOperations).catch(() => setOperations([]));
+    resqApi.volunteers().then(setVolunteers).catch(() => setVolunteers([]));
     const timer = window.setInterval(loadDashboard, 30000);
     return () => window.clearInterval(timer);
   }, []);
   const assign = async (zoneId = selectedZone.id, action = "Dispatch nearest available rescue team") => {
-    try { await resqApi.assign(zoneId, action); } catch { /* Keep demo interactions available offline. */ }
+    try {
+  await resqApi.assign(zoneId, action);
+  setToastMessage(`${action} has been added to rescue operations.`);
+} catch {
+  setToastMessage("Failed to create rescue operation.");
+}
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2600);
   };
@@ -272,7 +288,7 @@ const loadDashboard = async () => {
                   operations.map((operation) => (
                     <div className="action-item" key={operation.id}>
                       <span className="action-number">
-                        {operation.zone_id}
+                        {liveZones.find(z => z.id === operation.zone_id)?.name || operation.zone_id}
                       </span>
 
                       <div className="action-copy">
@@ -332,6 +348,92 @@ const loadDashboard = async () => {
               </div>
             </section>
           )}
+{active === "Volunteers" && (
+  <section className="panel engine-panel">
+    <div className="panel-header">
+      <div>
+        <div className="panel-kicker ai">
+          <Users size={14}/> VOLUNTEER NETWORK
+        </div>
+        <h2>Available volunteers</h2>
+      </div>
+      <span className="confidence">
+        {volunteers.length} volunteers
+      </span>
+    </div>
+
+    <div className="action-list">
+      {volunteers.length === 0 ? (
+        <div className="ai-summary">
+          <div className="ai-orb">
+            <Users size={19}/>
+          </div>
+          <div>
+            <strong>No volunteers registered</strong>
+            <p>Volunteer records will appear here when registered.</p>
+          </div>
+        </div>
+      ) : (
+        volunteers.map((volunteer) => (
+  <div
+    className="action-item"
+    key={volunteer.id}
+    onClick={async () => {
+      const nextStatus =
+        volunteer.status === "AVAILABLE"
+          ? "ASSIGNED"
+          : volunteer.status === "ASSIGNED"
+          ? "OFFLINE"
+          : "AVAILABLE";
+
+      try {
+        const updated = await resqApi.updateVolunteer(volunteer.id, {
+          status: nextStatus,
+          availability: nextStatus,
+        });
+
+        setVolunteers((current) =>
+          current.map((v) =>
+            v.id === volunteer.id ? updated : v
+          )
+        );
+
+        setToastMessage(
+          `${volunteer.name} is now ${nextStatus}.`
+        );
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2600);
+      } catch {
+        setToastMessage("Failed to update volunteer status.");
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2600);
+      }
+    }}
+    style={{ cursor: "pointer" }}
+  >
+    <span className="action-number">
+      <Users size={16}/>
+    </span>
+
+    <div className="action-copy">
+      <strong>{volunteer.name}</strong>
+      <small>
+        {volunteer.skills || "Skills not specified"}
+        {" · "}
+        {volunteer.location || "Location not specified"}
+      </small>
+      <span
+        className={`priority ${String(volunteer.status).toLowerCase()}`}
+      >
+        {volunteer.status}
+      </span>
+    </div>
+  </div>
+))
+      )}
+    </div>
+  </section>
+)}
           <div className="bottom-strip"><div className="strip-item"><CloudRain size={18}/><span><b>Weather alert</b> Rainfall intensity <strong>68 mm/hr</strong></span><em>+12%</em></div><div className="strip-item"><Thermometer size={18}/><span><b>River gauge</b> Kolar River level <strong>3.8m / 4.5m</strong></span><em className="amber-text">Rising</em></div><div className="strip-item"><MessageSquare size={18}/><span><b>Citizen network</b> <strong>128 live SOS reports</strong></span><em className="green-text">Connected</em></div><div className="strip-item"><Clock3 size={18}/><span><b>Last model refresh</b> 13:42:08 IST</span><em className="green-text">Live</em></div></div>
         </section>
       </main>
@@ -360,7 +462,7 @@ const loadDashboard = async () => {
     />
     Medical emergency
   </label>
-</div><div className="sos-preview"><MapPinned size={17}/><span><b>Bhopal response area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={submitSOS} disabled={sosSubmitting}>
+</div><div className="sos-preview"><MapPinned size={17}/><span><b>{selectedZone.name} area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={submitSOS} disabled={sosSubmitting}>
   {sosSubmitting ? "Sending SOS..." : "Broadcast SOS channel"} <Siren size={16}/>
 </button><button className="cancel-btn" onClick={() => setShowSOS(false)}>Cancel</button></div></div>}
 {responsePlan && (
@@ -443,7 +545,7 @@ const loadDashboard = async () => {
     </div>
   </div>
 )}
-      {showToast && <div className="toast"><ShieldCheck size={18}/><div><strong>Action queued</strong><span>Response team has been notified and assigned.</span></div><X size={15} onClick={() => setShowToast(false)}/></div>}
+      {showToast && <div className="toast"><ShieldCheck size={18}/><div><strong>Action queued</strong><span>{toastMessage}</span></div><X size={15} onClick={() => setShowToast(false)}/></div>}
     </div>
   );
 }

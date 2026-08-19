@@ -6,6 +6,7 @@ export type Incident = {
 };
 
 export type Metrics = {
+
   active_incidents: number;
   people_at_risk: number;
   teams_deployed: number;
@@ -66,7 +67,7 @@ export const resqApi = {
     }
   },
 
-  assign: async (zoneId: string, action: string): Promise<void> => {
+  assign: async (zoneId: string, action: string): Promise<any> => {
     if (!API_URL) {
       // Simulate API call in demo mode
       console.log(`Demo: Assigned action "${action}" to zone ${zoneId}`);
@@ -85,6 +86,7 @@ export const resqApi = {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       console.log("Assignment successful:", result);
+      return result;
     } catch (error) {
       console.error("Failed to assign action:", error);
       // In demo mode, we still show the toast even if API fails
@@ -169,6 +171,63 @@ export const resqApi = {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(report),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+  volunteers: async (): Promise<any[]> => {
+    if (!API_URL) return [];
+
+    const response = await fetch(`${API_URL}/api/volunteers`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  createVolunteer: async (volunteer: {
+    name: string;
+    skills?: string;
+    location?: string;
+  }): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/volunteers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(volunteer),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  updateVolunteer: async (
+    id: string,
+    updates: {
+      status?: string;
+      availability?: string;
+      skills?: string;
+      location?: string;
+    }
+  ): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/volunteers/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
     });
 
     if (!response.ok) {
