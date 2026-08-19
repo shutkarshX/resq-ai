@@ -872,6 +872,27 @@ nav {
   line-height: 1.6;
   margin-bottom: 18px;
 }
+.sos-field {
+  margin-bottom: 12px;
+}
+.sos-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #30445d;
+  margin-bottom: 5px;
+}
+.sos-field select,
+.sos-field input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 12px;
+  color: #30445d;
+  background: #fff;
+}
 .sos-preview {
   border: 1px solid #e8edf3;
   border-radius: 8px;

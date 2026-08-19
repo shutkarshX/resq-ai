@@ -39,6 +39,9 @@ function App() {
   const [apiState, setApiState] = useState<"connecting" | "online" | "demo">("connecting");
   const [refreshing, setRefreshing] = useState(false);
   const [sosSubmitting, setSosSubmitting] = useState(false);
+  const [sosEmergency, setSosEmergency] = useState("Flood");
+  const [sosPeople, setSosPeople] = useState(1);
+  const [sosMedical, setSosMedical] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [responsePlan, setResponsePlan] = useState<any>(null);
   const [showToast, setShowToast] = useState(false);
@@ -64,18 +67,27 @@ function App() {
     }));
   }, [dashboard]);
   const filteredZones = useMemo(() => liveZones.filter(z => z.name.toLowerCase().includes(search.toLowerCase())), [liveZones, search]);    const submitSOS = async () => {
-    setSosSubmitting(true);
+  setSosSubmitting(true);
 
-    try {
-    await resqApi.assign(
-      selectedZone.id,
-      "Citizen SOS broadcast — dispatch nearest available rescue team"
-    );
+  try {
+    await resqApi.createReport({
+      emergency: sosEmergency,
+      people: sosPeople,
+      medical_emergency: sosMedical,
+      location: `${selectedZone.name} area`,
+      latitude: selectedZone.coords[0],
+      longitude: selectedZone.coords[1],
+      flood_severity: 20,
+      infrastructure_damage: 0,
+      weather_severity: 7,
+    });
 
     setShowSOS(false);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2600);
 
+    const updatedReports = await resqApi.reports();
+    setReports(updatedReports);
     await loadDashboard();
   } catch (error) {
     console.error("SOS submission failed:", error);
@@ -323,7 +335,32 @@ const loadDashboard = async () => {
           <div className="bottom-strip"><div className="strip-item"><CloudRain size={18}/><span><b>Weather alert</b> Rainfall intensity <strong>68 mm/hr</strong></span><em>+12%</em></div><div className="strip-item"><Thermometer size={18}/><span><b>River gauge</b> Kolar River level <strong>3.8m / 4.5m</strong></span><em className="amber-text">Rising</em></div><div className="strip-item"><MessageSquare size={18}/><span><b>Citizen network</b> <strong>128 live SOS reports</strong></span><em className="green-text">Connected</em></div><div className="strip-item"><Clock3 size={18}/><span><b>Last model refresh</b> 13:42:08 IST</span><em className="green-text">Live</em></div></div>
         </section>
       </main>
-      {showSOS && <div className="modal-backdrop" onClick={() => setShowSOS(false)}><div className="sos-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowSOS(false)}><X size={18}/></button><div className="sos-icon"><PhoneCall size={23}/></div><div className="panel-kicker red">CITIZEN SOS BROADCAST</div><h2>Start an emergency broadcast?</h2><p>This will open a public SOS intake channel and notify all nearby response teams. Use only for an active emergency.</p><div className="sos-preview"><MapPinned size={17}/><span><b>Bhopal response area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={submitSOS} disabled={sosSubmitting}>
+      {showSOS && <div className="modal-backdrop" onClick={() => setShowSOS(false)}><div className="sos-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowSOS(false)}><X size={18}/></button><div className="sos-icon"><PhoneCall size={23}/></div><div className="panel-kicker red">CITIZEN SOS BROADCAST</div><h2>Start an emergency broadcast?</h2><p>This will open a public SOS intake channel and notify all nearby response teams. Use only for an active emergency.</p><div className="sos-field">
+  <label>Emergency type</label>
+  <select value={sosEmergency} onChange={e => setSosEmergency(e.target.value)}>
+    <option value="Flood">Flood</option>
+    <option value="Medical">Medical</option>
+    <option value="Infrastructure">Infrastructure</option>
+    <option value="Shelter">Shelter</option>
+  </select>
+</div><div className="sos-field">
+  <label>People needing help</label>
+  <input
+    type="number"
+    min="1"
+    value={sosPeople}
+    onChange={e => setSosPeople(Math.max(1, Number(e.target.value)))}
+  />
+</div><div className="sos-field">
+  <label>
+    <input
+      type="checkbox"
+      checked={sosMedical}
+      onChange={e => setSosMedical(e.target.checked)}
+    />
+    Medical emergency
+  </label>
+</div><div className="sos-preview"><MapPinned size={17}/><span><b>Bhopal response area</b><small>GPS radius · 8 km</small></span></div><button className="danger-btn wide" onClick={submitSOS} disabled={sosSubmitting}>
   {sosSubmitting ? "Sending SOS..." : "Broadcast SOS channel"} <Siren size={16}/>
 </button><button className="cancel-btn" onClick={() => setShowSOS(false)}>Cancel</button></div></div>}
 {responsePlan && (
