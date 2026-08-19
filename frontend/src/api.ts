@@ -152,9 +152,9 @@ export const resqApi = {
     emergency: string;
     people: number;
     medical_emergency: boolean;
-    location: string;
-    latitude: number;
-    longitude: number;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
     flood_severity: number;
     infrastructure_damage: number;
     weather_severity: number;

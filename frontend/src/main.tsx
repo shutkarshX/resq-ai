@@ -63,11 +63,10 @@ function App() {
       coords: zones[index]?.coords || zones[0].coords,
     }));
   }, [dashboard]);
-  const filteredZones = useMemo(() => liveZones.filter(z => z.name.toLowerCase().includes(search.toLowerCase())), [liveZones, search]);
-const submitSOS = async () => {
-  setSosSubmitting(true);
+  const filteredZones = useMemo(() => liveZones.filter(z => z.name.toLowerCase().includes(search.toLowerCase())), [liveZones, search]);    const submitSOS = async () => {
+    setSosSubmitting(true);
 
-  try {
+    try {
     await resqApi.assign(
       selectedZone.id,
       "Citizen SOS broadcast — dispatch nearest available rescue team"
