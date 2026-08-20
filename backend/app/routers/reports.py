@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app import models, services
+from app.auth import require_roles
 from app.risk_engine import calculate_risk
 from app.schemas import SOSReportIn, SOSReportAccepted, SOSReportOut
 
@@ -39,10 +40,15 @@ def create_report(payload: SOSReportIn, db: Session = Depends(get_db)):
     logger.info("Risk calculated: score=%s priority=%s", risk["risk_score"], risk["priority"])
 
     zone = services.find_nearest_zone(db, payload.latitude, payload.longitude)
+    if zone is None and payload.latitude is not None and payload.longitude is not None:
+        zone = services.create_response_zone(
+            db, payload.location, payload.latitude, payload.longitude,
+            risk["risk_score"], payload.people,
+        )
 
     # Create the incident this report is associated with.
     incident = models.Incident(
-        title=f"{payload.emergency} — {zone.name if zone else 'Unassigned zone'}",
+        title=f"{payload.emergency} — {zone.name if zone else payload.location or 'Unlocated report'}",
         emergency_type=payload.emergency,
         description=f"Citizen-reported {payload.emergency.lower()} emergency via SOS channel.",
         latitude=payload.latitude,
@@ -106,6 +112,7 @@ def list_reports(
     emergency: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    user: models.User = Depends(require_roles("INCIDENT_COMMANDER")),
 ):
     q = db.query(models.SOSReport)
     if priority:

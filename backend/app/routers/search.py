@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
 from app.schemas import SearchResults, ZoneOut, IncidentOut, SOSReportOut, TeamOut
+from app.auth import require_roles
 
 logger = logging.getLogger("resq-ai.search")
 router = APIRouter(prefix="/api", tags=["search"])
 
 
 @router.get("/search", response_model=SearchResults)
-def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db), user = Depends(require_roles("INCIDENT_COMMANDER"))):
     like = f"%{q}%"
 
     zones = (

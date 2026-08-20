@@ -7,8 +7,13 @@ def test_health(client):
     assert data["database"] == "connected"
 
 
-def test_dashboard_empty_db_returns_zeros(client):
-    resp = client.get("/api/dashboard")
+def test_dashboard_empty_db_returns_zeros(client, db_session):
+    from app import models
+    from app.auth import create_access_token, hash_password
+    commander = models.User(name="Commander", email="empty@test.local", password_hash=hash_password("password"), role="INCIDENT_COMMANDER")
+    db_session.add(commander)
+    db_session.commit()
+    resp = client.get("/api/dashboard", headers={"Authorization": f"Bearer {create_access_token(commander)}"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["metrics"]["active_incidents"] == 0

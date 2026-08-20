@@ -11,9 +11,21 @@ from datetime import datetime, timedelta, timezone
 from app.database import SessionLocal, init_db, engine, Base
 from app import models
 from app.risk_engine import calculate_risk, priority_color
+from app.auth import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("resq-ai.seed")
+
+DEMO_USERS = [
+    {"name": "Arjun Kumar", "email": "commander@resq.ai", "password": "commander123", "role": "INCIDENT_COMMANDER"},
+    {"name": "Priya Sharma", "email": "volunteer@resq.ai", "password": "volunteer123", "role": "VOLUNTEER"},
+]
+
+SHELTERS = [
+    {"name": "School 14 Community Shelter", "location": "Riverside Road", "lat": 23.2575, "lon": 77.4190, "capacity": 250, "available": 82},
+    {"name": "Old Market Civic Hall", "location": "Market Square", "lat": 23.2645, "lon": 77.4040, "capacity": 180, "available": 45},
+    {"name": "Shanti Nagar Relief Centre", "location": "Shanti Nagar Main Road", "lat": 23.2460, "lon": 77.4175, "capacity": 120, "available": 36},
+]
 
 BHOPAL_ZONES = [
     # Matches the frontend's hardcoded zones/coords exactly.
@@ -46,12 +58,15 @@ VOLUNTEERS = [
 def clear_all(db):
     # Delete in FK-safe order.
     db.query(models.AIAnalysis).delete()
+    db.query(models.VolunteerAssignment).delete()
     db.query(models.DispatchAction).delete()
     db.query(models.SOSReport).delete()
     db.query(models.Incident).delete()
     db.query(models.Volunteer).delete()
     db.query(models.RescueTeam).delete()
     db.query(models.RescueZone).delete()
+    db.query(models.Shelter).delete()
+    db.query(models.User).delete()
     db.commit()
 
 
@@ -61,6 +76,14 @@ def seed():
     try:
         logger.info("Clearing existing data...")
         clear_all(db)
+
+        logger.info("Seeding demo user accounts...")
+        for u in DEMO_USERS:
+            db.add(models.User(
+                name=u["name"], email=u["email"],
+                password_hash=hash_password(u["password"]), role=u["role"],
+            ))
+        db.flush()
 
         logger.info("Seeding zones...")
         zone_objs = {}
@@ -74,6 +97,14 @@ def seed():
             zone_objs[z["id"]] = zone
         db.flush()
 
+        logger.info("Seeding public shelters...")
+        for shelter in SHELTERS:
+            db.add(models.Shelter(
+                name=shelter["name"], location=shelter["location"],
+                latitude=shelter["lat"], longitude=shelter["lon"], status="OPEN",
+                capacity=shelter["capacity"], available_capacity=shelter["available"],
+            ))
+
         logger.info("Seeding rescue teams...")
         team_objs = {}
         for t in TEAMS:
@@ -86,10 +117,12 @@ def seed():
         db.flush()
 
         logger.info("Seeding volunteers...")
+        volunteer_user = db.query(models.User).filter(models.User.email == "volunteer@resq.ai").first()
         for v in VOLUNTEERS:
             db.add(models.Volunteer(
                 name=v["name"], skills=v["skills"], location=v["location"],
                 availability="AVAILABLE", status="AVAILABLE",
+                user_id=volunteer_user.id if v["name"] == volunteer_user.name else None,
             ))
 
         logger.info("Seeding incidents (one per zone, matching zone risk)...")
@@ -195,11 +228,12 @@ def seed():
         db.add(team_objs["TEAM-01"])
         db.add(team_objs["TEAM-02"])
 
-        db.add(models.DispatchAction(
+        first_action = models.DispatchAction(
             zone_id="Z-01", team_id="TEAM-01", action="Evacuate Riverside Colony",
             status="DEPLOYED",
             created_at=datetime.now(timezone.utc) - timedelta(minutes=40),
-        ))
+        )
+        db.add(first_action)
         db.add(models.DispatchAction(
             zone_id="Z-01", team_id="TEAM-02", action="Prioritize medical extraction",
             status="DEPLOYED",
@@ -224,6 +258,13 @@ def seed():
         team_objs["TEAM-06"].status = "DEPLOYED"
         team_objs["TEAM-06"].current_zone_id = "Z-02"
         db.add(team_objs["TEAM-06"])
+        db.flush()
+
+        db.add(models.VolunteerAssignment(
+            volunteer_user_id=volunteer_user.id, action_id=first_action.id,
+            instructions="Report to Riverside Colony staging point. Assist the water-rescue team with resident check-ins and first-aid supplies.",
+            status="ASSIGNED",
+        ))
 
         logger.info("Seeding one AI analysis (drives dashboard ai_summary)...")
         import json
@@ -248,6 +289,7 @@ def seed():
 
         # Summary printout
         print("\n--- Seed summary ---")
+        print(f"Users: {db.query(models.User).count()}")
         print(f"Zones: {db.query(models.RescueZone).count()}")
         print(f"Teams: {db.query(models.RescueTeam).count()}")
         print(f"Incidents: {db.query(models.Incident).count()}")

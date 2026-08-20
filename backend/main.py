@@ -20,7 +20,7 @@ logger = logging.getLogger("resq-ai")
 
 from app.database import init_db, engine
 from app.schemas import HealthResponse
-from app.routers import dashboard, reports, zones, teams, actions, ai, volunteers, search as search_router
+from app.routers import dashboard, reports, zones, teams, actions, ai, volunteers, users, search as search_router, auth as auth_router, citizen
 
 app = FastAPI(
     title="RESQ-AI API",
@@ -66,6 +66,8 @@ def health():
     )
 
 
+app.include_router(auth_router.router)
+app.include_router(citizen.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(zones.router)
@@ -73,6 +75,7 @@ app.include_router(teams.router)
 app.include_router(actions.router)
 app.include_router(ai.router)
 app.include_router(volunteers.router)
+app.include_router(users.router)
 app.include_router(search_router.router)
 
 

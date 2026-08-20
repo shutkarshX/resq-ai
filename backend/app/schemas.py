@@ -53,11 +53,24 @@ class MetricsOut(BaseModel):
     cases_resolved: int
 
 
+class WeatherOut(BaseModel):
+    current_precipitation: float
+    condition: str
+    trend: Optional[str] = None
+    updated_at: str
+    source: str
+
+
+class WeatherLocationOut(WeatherOut):
+    location_name: Optional[str] = None
+
+
 class DashboardOut(BaseModel):
     incident: IncidentSummary
     metrics: MetricsOut
     zones: List[ZoneOut]
     ai_summary: str
+    weather: Optional[WeatherOut] = None
 
 
 # ---------- Reports / SOS ----------
@@ -82,6 +95,18 @@ class SOSReportAccepted(BaseModel):
     risk_score: int
     priority: str
     message: str
+
+
+class PublicSOSStatusOut(BaseModel):
+    report_id: str
+    emergency: str
+    location: Optional[str] = None
+    priority: str
+    status: str
+    created_at: datetime
+    message: str
+    response_status: Optional[str] = None
+    response_summary: Optional[str] = None
 
 
 class SOSReportOut(BaseModel):
@@ -150,6 +175,7 @@ class ActionAssignIn(BaseModel):
     action: str
     team_id: Optional[str] = None
     assignee: Optional[str] = None  # accepted for backward-compat w/ old frontend calls
+    report_id: Optional[str] = None
 
 
 class ActionAssignOut(BaseModel):
@@ -157,6 +183,7 @@ class ActionAssignOut(BaseModel):
     action_id: str
     team_id: Optional[str] = None
     zone_id: str
+    incident_id: Optional[str] = None
     status: str
     message: str
     queued_at: str
@@ -167,6 +194,8 @@ class ActionOut(BaseModel):
     id: str
     zone_id: str
     team_id: Optional[str] = None
+    report_id: Optional[str] = None
+    incident_id: Optional[str] = None
     action: str
     status: str
     created_at: datetime
@@ -231,6 +260,7 @@ class ResponsePlanOut(BaseModel):
 class VolunteerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    user_id: Optional[str] = None
     name: str
     skills: Optional[str] = None
     availability: str
@@ -249,6 +279,119 @@ class VolunteerUpdateIn(BaseModel):
     availability: Optional[str] = Field(None, pattern="^(AVAILABLE|ASSIGNED|OFFLINE)$")
     skills: Optional[str] = None
     location: Optional[str] = None
+
+
+class VolunteerAssignmentCreateIn(BaseModel):
+    volunteer_id: str
+    action_id: str
+    instructions: str = Field(..., min_length=1)
+
+
+class VolunteerAssignmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    action_id: str
+    instructions: str
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    action: ActionOut
+
+
+class CommanderVolunteerAssignmentOut(VolunteerAssignmentOut):
+    volunteer_id: str
+    volunteer_name: str
+    volunteer_skills: Optional[str] = None
+    volunteer_location: Optional[str] = None
+
+
+class ShelterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    location: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    status: str
+    capacity: int
+    available_capacity: int
+
+
+class CitizenAlertOut(BaseModel):
+    id: str
+    severity: str
+    title: str
+    message: str
+    zone_name: Optional[str] = None
+
+
+# ---------- Auth ----------
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    email: str
+    role: str
+
+
+class UserManagementOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    created_at: datetime
+    volunteer_id: Optional[str] = None
+    volunteer_status: Optional[str] = None
+    volunteer_availability: Optional[str] = None
+    volunteer_skills: Optional[str] = None
+    volunteer_location: Optional[str] = None
+    assignment_count: int
+    active_assignment_count: int
+    completed_assignment_count: int
+    current_assignment: Optional[str] = None
+
+
+class CitizenActivityOut(BaseModel):
+    report_id: str
+    emergency: str
+    location: Optional[str] = None
+    zone_name: Optional[str] = None
+    people: int
+    priority: str
+    status: str
+    created_at: datetime
+    response_status: Optional[str] = None
+
+
+class ActivityEventOut(BaseModel):
+    label: str
+    category: str
+    timestamp: datetime
+
+
+class UserManagementPayload(BaseModel):
+    users: list[UserManagementOut]
+    citizen_sos: list[CitizenActivityOut]
+    activity: list[ActivityEventOut]
+
+
+class RegisterIn(BaseModel):
+    name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+    role: str = Field(..., pattern="^(INCIDENT_COMMANDER|VOLUNTEER)$")
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
 
 
 # ---------- Search ----------

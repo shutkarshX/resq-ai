@@ -252,7 +252,7 @@ human clicking Assign.
    (`python seed.py`).
 2. Start frontend (`npm run dev`), confirm the header shows **"Backend
    connected"**.
-3. Click **Trigger Citizen SOS** → confirm the broadcast. This calls
+3. Use the public citizen SOS experience to submit an emergency report. This calls
    `assign()` under the hood in the current frontend wiring, which hits
    `/api/actions/assign` and shows the toast.
 4. Open Swagger (`/docs`) alongside the UI and call `POST /api/reports`

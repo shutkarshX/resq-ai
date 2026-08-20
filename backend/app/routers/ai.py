@@ -15,13 +15,14 @@ from app import models
 from app.ai_engine import analyze_incident, build_response_plan
 from app.risk_engine import calculate_risk
 from app.schemas import AIAnalyzeIn, AIAnalyzeOut, ResponsePlanIn, ResponsePlanOut
+from app.auth import require_roles
 
 logger = logging.getLogger("resq-ai.ai")
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 @router.post("/analyze", response_model=AIAnalyzeOut)
-def ai_analyze(payload: AIAnalyzeIn, db: Session = Depends(get_db)):
+def ai_analyze(payload: AIAnalyzeIn, db: Session = Depends(get_db), user: models.User = Depends(require_roles("INCIDENT_COMMANDER"))):
     risk_score = payload.risk_score
     priority = payload.priority
 
@@ -74,7 +75,7 @@ def ai_analyze(payload: AIAnalyzeIn, db: Session = Depends(get_db)):
 
 
 @router.post("/response-plan", response_model=ResponsePlanOut)
-def ai_response_plan(payload: ResponsePlanIn, db: Session = Depends(get_db)):
+def ai_response_plan(payload: ResponsePlanIn, db: Session = Depends(get_db), user: models.User = Depends(require_roles("INCIDENT_COMMANDER"))):
     zone = db.query(models.RescueZone).filter(models.RescueZone.id == payload.zone_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail=f"Zone '{payload.zone_id}' not found")

@@ -22,6 +22,17 @@ def new_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: new_id("USR"))
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="VOLUNTEER")  # INCIDENT_COMMANDER, VOLUNTEER
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+
 class RescueZone(Base):
     __tablename__ = "rescue_zones"
 
@@ -112,6 +123,8 @@ class DispatchAction(Base):
     id = Column(String, primary_key=True, default=lambda: new_id("ACT"))
     zone_id = Column(String, ForeignKey("rescue_zones.id"), nullable=False)
     team_id = Column(String, ForeignKey("rescue_teams.id"), nullable=True)
+    report_id = Column(String, ForeignKey("sos_reports.id"), nullable=True)
+    incident_id = Column(String, ForeignKey("incidents.id"), nullable=True)
     action = Column(String, nullable=False)
     status = Column(String, nullable=False, default="QUEUED")
     created_at = Column(DateTime(timezone=True), default=utcnow)
@@ -119,12 +132,15 @@ class DispatchAction(Base):
 
     zone = relationship("RescueZone", back_populates="actions")
     team = relationship("RescueTeam", back_populates="actions")
+    report = relationship("SOSReport")
+    incident = relationship("Incident")
 
 
 class Volunteer(Base):
     __tablename__ = "volunteers"
 
     id = Column(String, primary_key=True, default=lambda: new_id("VOL"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, unique=True)
     name = Column(String, nullable=False)
     skills = Column(String, nullable=True)  # comma-separated for simplicity
     availability = Column(String, nullable=False, default="AVAILABLE")
@@ -132,6 +148,37 @@ class Volunteer(Base):
     status = Column(String, nullable=False, default="AVAILABLE")
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User")
+
+
+class VolunteerAssignment(Base):
+    """A volunteer-facing task linked to an existing rescue operation."""
+    __tablename__ = "volunteer_assignments"
+
+    id = Column(String, primary_key=True, default=lambda: new_id("VASSIGN"))
+    volunteer_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    action_id = Column(String, ForeignKey("dispatch_actions.id"), nullable=False)
+    instructions = Column(Text, nullable=False)
+    status = Column(String, nullable=False, default="ASSIGNED")
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    volunteer_user = relationship("User")
+    action = relationship("DispatchAction")
+
+
+class Shelter(Base):
+    __tablename__ = "shelters"
+
+    id = Column(String, primary_key=True, default=lambda: new_id("SHELTER"))
+    name = Column(String, nullable=False)
+    location = Column(String, nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    status = Column(String, nullable=False, default="OPEN")
+    capacity = Column(Integer, nullable=False, default=0)
+    available_capacity = Column(Integer, nullable=False, default=0)
 
 
 class AIAnalysis(Base):
