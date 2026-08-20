@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app import models, services
+from app.auth import get_current_user, require_roles
 from app.schemas import (
     ActionAssignIn, ActionAssignOut, ActionOut, ActionStatusUpdateIn
 )
@@ -23,10 +24,22 @@ router = APIRouter(prefix="/api", tags=["actions"])
 
 
 @router.post("/actions/assign", response_model=ActionAssignOut, status_code=201)
-def assign_action(payload: ActionAssignIn, db: Session = Depends(get_db)):
+def assign_action(
+    payload: ActionAssignIn,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(require_roles("INCIDENT_COMMANDER")),
+):
     zone = db.query(models.RescueZone).filter(models.RescueZone.id == payload.zone_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail=f"Zone '{payload.zone_id}' not found")
+
+    report = None
+    if payload.report_id:
+        report = db.query(models.SOSReport).filter(models.SOSReport.id == payload.report_id).first()
+        if not report:
+            raise HTTPException(status_code=404, detail=f"Report '{payload.report_id}' not found")
+        if report.zone_id != zone.id:
+            raise HTTPException(status_code=409, detail="The report does not belong to the selected response zone")
 
     team = services.pick_available_team(db, preferred_team_id=payload.team_id)
 
@@ -42,6 +55,8 @@ def assign_action(payload: ActionAssignIn, db: Session = Depends(get_db)):
     action = models.DispatchAction(
         zone_id=zone.id,
         team_id=team.id if team else None,
+        report_id=report.id if report else None,
+        incident_id=report.incident_id if report else None,
         action=payload.action,
         status="DEPLOYED" if team else "QUEUED",
     )
@@ -56,6 +71,10 @@ def assign_action(payload: ActionAssignIn, db: Session = Depends(get_db)):
     else:
         logger.info("Action '%s' queued for zone %s (no available team)", payload.action, zone.id)
 
+    if report:
+        report.status = "TRIAGED"
+        db.add(report)
+
     db.commit()
     db.refresh(action)
 
@@ -64,6 +83,7 @@ def assign_action(payload: ActionAssignIn, db: Session = Depends(get_db)):
         action_id=action.id,
         team_id=team.id if team else None,
         zone_id=zone.id,
+        incident_id=action.incident_id,
         status=action.status,
         message="Team deployed successfully" if team else "Action queued for dispatch (no team currently available)",
         queued_at=action.created_at.isoformat(),
@@ -71,12 +91,12 @@ def assign_action(payload: ActionAssignIn, db: Session = Depends(get_db)):
 
 
 @router.get("/actions", response_model=list[ActionOut])
-def list_actions(db: Session = Depends(get_db)):
+def list_actions(db: Session = Depends(get_db), user: models.User = Depends(require_roles("INCIDENT_COMMANDER"))):
     return db.query(models.DispatchAction).order_by(models.DispatchAction.created_at.desc()).all()
 
 
 @router.get("/actions/{action_id}", response_model=ActionOut)
-def get_action(action_id: str, db: Session = Depends(get_db)):
+def get_action(action_id: str, db: Session = Depends(get_db), user: models.User = Depends(require_roles("INCIDENT_COMMANDER"))):
     action = db.query(models.DispatchAction).filter(models.DispatchAction.id == action_id).first()
     if not action:
         raise HTTPException(status_code=404, detail=f"Action '{action_id}' not found")
@@ -84,7 +104,12 @@ def get_action(action_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/actions/{action_id}", response_model=ActionOut)
-def update_action_status(action_id: str, payload: ActionStatusUpdateIn, db: Session = Depends(get_db)):
+def update_action_status(
+    action_id: str,
+    payload: ActionStatusUpdateIn,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(require_roles("INCIDENT_COMMANDER")),
+):
     action = db.query(models.DispatchAction).filter(models.DispatchAction.id == action_id).first()
     if not action:
         raise HTTPException(status_code=404, detail=f"Action '{action_id}' not found")
@@ -105,7 +130,7 @@ def update_action_status(action_id: str, payload: ActionStatusUpdateIn, db: Sess
                 logger.info("Team %s completed action %s, now AVAILABLE", team.id, action.id)
 
         # Resolve the most recently linked active incident for this zone, if any.
-        incident = (
+        incident = db.query(models.Incident).filter(models.Incident.id == action.incident_id).first() if action.incident_id else (
             db.query(models.Incident)
             .filter(models.Incident.zone_id == action.zone_id, models.Incident.status == "ACTIVE")
             .order_by(models.Incident.created_at.desc())
@@ -115,6 +140,12 @@ def update_action_status(action_id: str, payload: ActionStatusUpdateIn, db: Sess
             incident.status = "RESOLVED"
             incident.updated_at = datetime.now(timezone.utc)
             db.add(incident)
+
+        if action.report_id:
+            report = db.query(models.SOSReport).filter(models.SOSReport.id == action.report_id).first()
+            if report:
+                report.status = "RESOLVED"
+                db.add(report)
             logger.info("Incident %s marked RESOLVED after action %s completion", incident.id, action.id)
 
         zone = db.query(models.RescueZone).filter(models.RescueZone.id == action.zone_id).first()

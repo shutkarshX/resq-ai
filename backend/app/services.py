@@ -111,18 +111,38 @@ def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     return r * c
 
 
-def find_nearest_zone(db: Session, latitude: Optional[float], longitude: Optional[float]) -> Optional[models.RescueZone]:
-    """Finds the nearest RescueZone to given coordinates. Falls back to the
-    highest-risk zone if coordinates are missing."""
+def find_nearest_zone(db: Session, latitude: Optional[float], longitude: Optional[float], max_distance_km: float = 12.0) -> Optional[models.RescueZone]:
+    """Find a response zone only when coordinates place the SOS nearby.
+
+    A missing or distant coordinate must not silently turn into a report for
+    the highest-risk demo zone.
+    """
     zones = db.query(models.RescueZone).all()
     if not zones:
         return None
 
     if latitude is None or longitude is None:
-        return max(zones, key=lambda z: z.risk_score)
+        return None
 
     nearest = min(zones, key=lambda z: _haversine_km(latitude, longitude, z.latitude, z.longitude))
-    return nearest
+    return nearest if _haversine_km(latitude, longitude, nearest.latitude, nearest.longitude) <= max_distance_km else None
+
+
+def create_response_zone(db: Session, location: Optional[str], latitude: Optional[float], longitude: Optional[float], risk_score: int, people_at_risk: int) -> models.RescueZone:
+    """Create a coordinate-backed, non-demo response zone for an SOS outside known areas."""
+    zone = models.RescueZone(
+        id=models.new_id("Z-CIT"),
+        name=location.strip() if location and location.strip() else "Citizen-reported location",
+        latitude=latitude if latitude is not None else 0.0,
+        longitude=longitude if longitude is not None else 0.0,
+        risk_score=risk_score,
+        people_at_risk=people_at_risk,
+        status="Assessment required",
+        color=priority_color("CRITICAL" if risk_score > 80 else "HIGH" if risk_score > 60 else "MEDIUM"),
+    )
+    db.add(zone)
+    db.flush()
+    return zone
 
 
 # ---------- Team assignment ----------

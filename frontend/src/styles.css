@@ -206,6 +206,9 @@ nav {
   color: #718096;
   cursor: pointer;
 }
+.status-control {
+  cursor: default;
+}
 .notification {
   position: relative;
 }
@@ -327,7 +330,7 @@ nav {
 }
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   margin-bottom: 18px;
 }
@@ -1087,3 +1090,78 @@ nav {
     font-size: 25px;
   }
 }
+
+/* ---------- Auth screen ---------- */
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0b1220;
+  padding: 24px;
+}
+.auth-loading {
+  color: #91a0b8;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 26px 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+.auth-card .brand { color: #132238; padding: 0 0 20px; }
+.auth-tabs {
+  display: flex;
+  background: #eef2f8;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 18px;
+}
+.auth-tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #64748b;
+  cursor: pointer;
+}
+.auth-tabs button.active { background: #fff; color: #132238; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.auth-form { display: flex; flex-direction: column; gap: 13px; }
+.auth-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: #475569; }
+.auth-form input, .auth-form select {
+  border: 1px solid #dde4ee;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #132238;
+}
+.auth-form input:focus, .auth-form select:focus { outline: none; border-color: #ea465c; }
+.auth-error {
+  display: flex; align-items: center; gap: 6px;
+  background: #fef2f2; color: #b91c1c;
+  padding: 8px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+}
+.auth-demo { margin-top: 20px; text-align: center; }
+.auth-demo small { color: #94a3b8; font-weight: 600; }
+.auth-demo-list { display: flex; gap: 8px; margin-top: 8px; }
+.auth-demo-list button {
+  flex: 1;
+  border: 1px solid #dde4ee;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 7px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+.auth-demo-list button:hover { background: #eef2f8; }

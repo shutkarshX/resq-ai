@@ -6,19 +6,20 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
 from app.schemas import ZoneOut, ZoneDetailOut
+from app.auth import require_roles
 
 logger = logging.getLogger("resq-ai.zones")
 router = APIRouter(prefix="/api", tags=["zones"])
 
 
 @router.get("/zones", response_model=list[ZoneOut])
-def list_zones(db: Session = Depends(get_db)):
+def list_zones(db: Session = Depends(get_db), user = Depends(require_roles("INCIDENT_COMMANDER"))):
     zones = db.query(models.RescueZone).order_by(models.RescueZone.risk_score.desc()).all()
     return zones
 
 
 @router.get("/zones/{zone_id}", response_model=ZoneDetailOut)
-def get_zone(zone_id: str, db: Session = Depends(get_db)):
+def get_zone(zone_id: str, db: Session = Depends(get_db), user = Depends(require_roles("INCIDENT_COMMANDER"))):
     zone = db.query(models.RescueZone).filter(models.RescueZone.id == zone_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail=f"Zone '{zone_id}' not found")
@@ -55,7 +56,7 @@ def get_zone(zone_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/map/zones")
-def map_zones(db: Session = Depends(get_db)):
+def map_zones(db: Session = Depends(get_db), user = Depends(require_roles("INCIDENT_COMMANDER"))):
     """Simple JSON structure suitable for feeding Leaflet markers directly."""
     zones = db.query(models.RescueZone).all()
     return {

@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from app.database import Base, engine, SessionLocal
 from app import models
 from app.risk_engine import calculate_risk
+from app.auth import hash_password, create_access_token
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -56,5 +57,11 @@ def seeded_client(client, db_session):
     )
     db_session.add(zone)
     db_session.add(team)
+    commander = models.User(
+        name="Test Commander", email="commander@test.local",
+        password_hash=hash_password("commander123"), role="INCIDENT_COMMANDER",
+    )
+    db_session.add(commander)
     db_session.commit()
+    client.headers.update({"Authorization": f"Bearer {create_access_token(commander)}"})
     return client
