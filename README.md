@@ -1,248 +1,145 @@
-# RESQ-AI
+# RESQ-AI — Disaster Response Intelligence Platform
 
-> **Disaster-response intelligence for faster, more informed coordination.**
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Async%20REST-009688.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18%20%7C%20TypeScript-61DAFB.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF.svg)](https://vitejs.dev/)
+[![Leaflet](https://img.shields.io/badge/Maps-Leaflet%20Geospatial-199900.svg)](https://leafletjs.com/)
+[![AI](https://img.shields.io/badge/AI%20Engine-Google%20Gemini-4285F4.svg)](https://ai.google.dev/)
+[![SQLite](https://img.shields.io/badge/Storage-SQLite%20Async-003B57.svg)](https://www.sqlite.org/)
 
-RESQ-AI is a full-stack disaster-response command-center prototype that combines incident intake, risk prioritization, geospatial awareness, AI-assisted recommendations, rescue-team assignment, and operation tracking in one workflow.
-
-The current build demonstrates a **simulated Bhopal flood-response scenario** using deterministic seeded data. It is a decision-support prototype, not an autonomous emergency-dispatch system.
-
----
-
-## What it does
-
-| Capability | Purpose |
-| --- | --- |
-| **Command center** | Surface incidents, people at risk, deployments, resolved cases, and recommended actions |
-| **Geospatial intelligence** | Visualize rescue zones, risk scores, and affected populations on an interactive map |
-| **Citizen SOS** | Capture emergency type, affected people, medical need, location, risk, priority, and status |
-| **AI decision support** | Turn incident/risk information into evacuation, medical, supply, and rescue recommendations |
-| **Rescue operations** | Assign available teams and track an operation from queue to completion |
-| **Teams & volunteers** | Maintain operational information about rescue teams and volunteer capabilities |
+An AI-assisted disaster response intelligence and emergency rescue coordination command center. RESQ-AI integrates multi-channel citizen SOS intake, automated risk triage, geospatial hazard mapping, AI-generated evacuation recommendations (via Google Gemini), and dynamic rescue team dispatch into a cohesive operational dashboard.
 
 ---
 
-## The core workflow
+## 🏛️ System Architecture
 
-```text
-Citizen SOS
-    ↓
-FastAPI API
-    ↓
-Risk calculation
-    ↓
-AI-assisted recommendations
-    ↓
-Response action
-    ↓
-Rescue-team assignment
-    ↓
-Operation tracking
-    ↓
-Completed response
-```
+```mermaid
+graph TD
+    Citizen([Citizen SOS Reporter]) -->|"1. Submit SOS / Distress Data"| Frontend["React + TypeScript Command Dashboard"]
+    
+    subgraph APILayer["FastAPI Backend Engine (Async REST)"]
+        Router["API Gateway (/api/v1)"]
+        TriageEngine["Multi-Factor Risk Scoring Engine<br/>(Severity, Vulnerability, Urgency)"]
+        AIEngine["Gemini AI Recommendation Engine<br/>(Evacuation, Medical & Resource Directives)"]
+        DispatchService["Rescue Dispatch & Team Tracker"]
+    end
 
-The important part is that the dashboard is backed by a real application flow: reports are persisted, risk is calculated, actions can be assigned, and rescue operations move through their lifecycle.
+    subgraph DataStore["State Persistence Layer"]
+        DB[("SQLite Database<br/>(Incidents, Teams, Routes)")]
+        GeoData[("GeoJSON Zone Layers<br/>(Flood & Hazard Heatmaps)")]
+    end
 
-### Operation lifecycle
-
-```text
-QUEUED → DEPLOYED → IN_PROGRESS → COMPLETED
+    Frontend -->|"JSON REST Requests"| Router
+    Router --> TriageEngine
+    TriageEngine -->|"Priority Weighted Incidents"| AIEngine
+    AIEngine -->|"Actionable Tactics"| DispatchService
+    DispatchService -->|"Audit Trail & Status Updates"| DB
+    DB -->|"Live Telemetry & GeoJSON"| Frontend
 ```
 
 ---
 
-## Architecture
+## 🚨 Incident Triage & Operational Lifecycle
 
-```text
-┌───────────────────────┐
-│   React / TypeScript  │
-│  Dashboard + Map UI   │
-└───────────┬───────────┘
-            │ REST API
-            ▼
-┌───────────────────────┐
-│   FastAPI Backend     │
-├───────────────────────┤
-│ Routers / Services    │
-│ Risk Engine           │
-│ AI Decision Support   │
-│ Assignment Logic      │
-└───────────┬───────────┘
-            │ SQLAlchemy
-            ▼
-┌───────────────────────┐
-│    SQLite Database    │
-│ seeded demo scenario  │
-└───────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> SOS_Submitted: Citizen Reports Distress
+    SOS_Submitted --> Triage_Scoring: Extract Severity, Medical Need & Location
+    Triage_Scoring --> High_Priority: Risk Score >= 75
+    Triage_Scoring --> Medium_Priority: Risk Score 40-74
+    Triage_Scoring --> Standard_Queue: Risk Score < 40
+
+    High_Priority --> AI_Action_Generation: Gemini Generates Tactical Directives
+    AI_Action_Generation --> Team_Assigned: Dispatch Nearest Available Team
+    Team_Assigned --> En_Route: Telemetry Tracking
+    En_Route --> On_Scene: Medical Triage / Evacuation
+    On_Scene --> Resolved: Citizens Rescued & Logged
+    Resolved --> [*]
 ```
 
 ---
 
-## Tech stack
+## ✨ Core Capabilities
 
-**Frontend**  
-`React` · `TypeScript` · `Vite` · `React Leaflet` · `Recharts` · `Lucide React`
-
-**Backend**  
-`Python` · `FastAPI` · `SQLAlchemy` · `Pydantic` · `SQLite` · `Uvicorn`
-
-**Development**  
-`Git` · `npm` · `Python virtual environment`
+| Module | Technical Implementation | Operational Role |
+| :--- | :--- | :--- |
+| **Command Center HUD** | React 18, Tailwind CSS, Lucide Icons | Real-time overview of active SOS signals, casualties prevented, available teams, and bottleneck alerts. |
+| **Geospatial Intelligence** | Leaflet, OpenStreetMap, GeoJSON | Interactive zone-level inundation maps, high-risk sector overlays, and safe evacuation corridors. |
+| **Citizen SOS Intake** | Async FastAPI Form Validator | Mobile-friendly emergency reporting capturing distress category, medical vulnerabilities, and GPS coordinates. |
+| **AI Decision Support** | Google Gemini API integration | Converts unstructured incident telemetry into prioritized supply, medical triage, and helicopter dispatch recommendations. |
+| **Resource Management** | SQLite, SQLAlchemy ORM | Live operational status tracking for NDRF teams, volunteer squads, inflatable boats, and medical shelters. |
 
 ---
 
-## Run it on Windows
+## 🚀 Quickstart: Local Setup
 
-The repository includes scripts for a quick local demo.
+### Prerequisites
+* **Python**: 3.10+
+* **Node.js**: 18+ and `npm`
 
-```text
-1. Clone the repository
-2. Run setup.bat once
-3. Run run.bat
-4. Open http://localhost:5173
-```
+### 1. Backend Setup
 
-`setup.bat` installs dependencies and prepares the deterministic demo data. `run.bat` starts the FastAPI backend and React frontend.
-
-### Manual setup
-
-**Backend**
-
-```powershell
+```bash
 cd backend
+
+# Create and activate virtual environment
 python -m venv .venv
-.venv\Scripts\activate
+# Windows: .venv\Scripts\Activate.ps1 | Linux/macOS: source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Populate demo scenario (Bhopal urban flood simulation)
 python seed.py
-uvicorn main:app --reload --port 8000
+
+# Launch FastAPI server
+python main.py
 ```
+*Backend API will listen at `http://127.0.0.1:8000` with interactive Swagger docs at `/docs`.*
 
-**Frontend** — in a second terminal:
+### 2. Frontend Setup
 
-```powershell
+In a separate terminal:
+
+```bash
 cd frontend
+
+# Install packages
 npm install
+
+# Start Vite development server
 npm run dev
 ```
-
-The frontend normally runs at `http://localhost:5173` and the backend at `http://127.0.0.1:8000`.
-
-API documentation is available at `http://127.0.0.1:8000/docs` when the backend is running.
+*Open `http://localhost:5173` in your browser to access the RESQ-AI Command Center.*
 
 ---
 
-## Demo scenario
-
-The seeded demonstration models a flood emergency around Bhopal:
-
-| Zone | Risk | People at risk | Example status |
-| --- | ---: | ---: | --- |
-| Riverside Colony | 96 | 420 | Immediate evacuation |
-| Old Market Ward | 81 | 185 | Rescue in progress |
-| Shanti Nagar | 68 | 96 | Shelter activated |
-
-**All disaster information, locations, weather values, and citizen reports in the demo are simulated/seeded data.**
-
----
-
-## API surface
-
-| Area | Endpoints |
-| --- | --- |
-| Dashboard | `GET /api/dashboard` |
-| Citizen SOS | `POST /api/reports` · `GET /api/reports` |
-| Assignment | `POST /api/actions/assign` |
-| Operations | `GET /api/actions` · `GET /api/actions/{action_id}` · `PATCH /api/actions/{action_id}` |
-
----
-
-## Project structure
+## 📂 Repository Structure
 
 ```text
 resq-ai/
 ├── backend/
 │   ├── app/
-│   │   ├── routers/
-│   │   ├── services/
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── database.py
-│   │   └── risk_engine.py
-│   ├── main.py
-│   ├── seed.py
-│   ├── requirements.txt
-│   └── tests/
+│   │   ├── routers/           # Incident, team, SOS, and AI recommendation endpoints
+│   │   ├── models/            # SQLAlchemy database schemas
+│   │   ├── schemas/           # Pydantic request & response validators
+│   │   └── services/          # Gemini AI integration & triage scoring
+│   ├── main.py                # FastAPI application entrypoint
+│   ├── seed.py                # Seed script for realistic demo incident records
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── main.tsx
-│   │   ├── api.ts
-│   │   └── styles.css
-│   ├── package.json
-│   └── index.html
-├── setup.bat
-├── run.bat
+│   │   ├── components/        # MapView, SOSModal, StatsCards, TeamManager
+│   │   ├── services/          # Axios API communication layer
+│   │   └── App.tsx            # Central dashboard composition
+│   ├── vite.config.ts
+│   └── package.json
 └── README.md
 ```
 
 ---
 
-## Demo data & database
-
-The SQLite database is intentionally excluded from Git. It can be recreated with:
-
-```powershell
-cd backend
-python seed.py
-```
-
-The seed process creates deterministic data for rescue zones, teams, volunteers, incidents, citizen SOS reports, and dispatch actions.
-
----
-
-## Current prototype status
-
-The current build includes:
-
-- React/Vite command-center UI
-- FastAPI REST backend
-- SQLite persistence
-- deterministic demo seeding
-- risk calculation
-- citizen SOS reporting
-- rescue-team assignment
-- rescue-operation tracking
-- operation status updates
-- interactive map
-- AI-assisted recommendations
-
----
-
-## Roadmap
-
-Possible next steps include:
-
-- real-time weather and GIS feeds
-- live satellite / geospatial data
-- WebSocket or Server-Sent Events updates
-- authentication and role-based access
-- PostgreSQL deployment
-- mobile citizen SOS client
-- advanced ML-based risk prediction
-- deeper resource-optimization models
-- integrations with real emergency-service systems
-
----
-
-## Scope & safety
-
-RESQ-AI is a **disaster-response decision-support prototype**.
-
-It does **not** replace emergency authorities or professional rescue services, and it does **not independently dispatch real emergency services**. The included scenario is intended for demonstration and development only.
-
----
-
-## Hackathon prototype
-
-RESQ-AI explores how software can turn fragmented emergency information into a clearer operational workflow — from **incident → risk → recommendation → assignment → response tracking**.
-
-**Built as a practical full-stack prototype, with the emphasis on making the workflow actually work.**
+## 📜 Ethical & Simulation Notice
+* Developed as an academic and hackathon demonstration for AI-assisted emergency response.
+* All incident data, citizen identities, and coordinates are deterministic synthetic simulations.
